@@ -13,6 +13,7 @@
 - **BREAKING:**
   - Remove duplicate parameters from RecorderController.
   - Add `RecorderSettings` model for all the recording settings.
+- Feature: Added microphone permission handling for macOS, Windows and Linux.
 
 ## 1.3.0
 
