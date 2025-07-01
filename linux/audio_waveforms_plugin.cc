@@ -2,6 +2,7 @@
 
 #include <flutter_linux/flutter_linux.h>
 #include <gtk/gtk.h>
+#include <unistd.h>
 
 struct _AudioWaveformsPlugin {
   GObject parent_instance;
@@ -14,10 +15,17 @@ static void audio_waveforms_plugin_handle_method_call(
     AudioWaveformsPlugin* self,
     FlMethodCall* method_call) {
   g_autoptr(FlMethodResponse) response = nullptr;
-  response = FL_METHOD_RESPONSE(fl_method_error_response_new(
-      "UNIMPLEMENTED",
-      "AudioWaveforms desktop support is not yet implemented",
-      fl_value_new_string(fl_method_call_get_name(method_call))));
+  const gchar* method = fl_method_call_get_name(method_call);
+
+  if (strcmp(method, "checkPermission") == 0) {
+    // Linux does not require microphone permission by default.
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(fl_value_new_bool(true)));
+  } else {
+    response = FL_METHOD_RESPONSE(fl_method_error_response_new(
+        "UNIMPLEMENTED",
+        "AudioWaveforms desktop support is not yet implemented",
+        fl_value_new_string(method)));
+  }
   fl_method_call_respond(method_call, response, nullptr);
 }
 

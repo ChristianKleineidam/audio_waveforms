@@ -8,6 +8,7 @@ import '../../audio_waveforms.dart';
 import '../base/constants.dart';
 import '../base/platform_streams.dart';
 import '../base/player_identifier.dart';
+import '../base/desktop_audio_handler.dart';
 
 part '../base/audio_waveforms_interface.dart';
 part 'waveform_extraction_controller.dart';
