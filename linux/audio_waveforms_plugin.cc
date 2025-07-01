@@ -6,6 +6,7 @@
 
 struct _AudioWaveformsPlugin {
   GObject parent_instance;
+  FlMethodChannel* desktop_channel;
 };
 
 G_DEFINE_TYPE(AudioWaveformsPlugin, audio_waveforms_plugin, g_object_get_type())
@@ -18,8 +19,14 @@ static void audio_waveforms_plugin_handle_method_call(
   const gchar* method = fl_method_call_get_name(method_call);
 
   if (strcmp(method, "checkPermission") == 0) {
-    // Linux does not require microphone permission by default.
-    response = FL_METHOD_RESPONSE(fl_method_success_response_new(fl_value_new_bool(true)));
+    fl_method_channel_invoke_method(self->desktop_channel, method, nullptr, nullptr,
+        [](GObject* object, GAsyncResult* res, gpointer user_data) {
+          g_autoptr(FlMethodResponse) resp = fl_method_channel_invoke_method_finish(FL_METHOD_CHANNEL(object), res, nullptr);
+          fl_method_call_respond(FL_METHOD_CALL(user_data), resp, nullptr);
+          g_object_unref(user_data);
+        },
+        g_object_ref(method_call));
+    return;
   } else {
     response = FL_METHOD_RESPONSE(fl_method_error_response_new(
         "UNIMPLEMENTED",
@@ -30,6 +37,8 @@ static void audio_waveforms_plugin_handle_method_call(
 }
 
 static void audio_waveforms_plugin_dispose(GObject* object) {
+  AudioWaveformsPlugin* self = AUDIO_WAVEFORMS_PLUGIN(object);
+  g_clear_object(&self->desktop_channel);
   G_OBJECT_CLASS(audio_waveforms_plugin_parent_class)->dispose(object);
 }
 
@@ -53,6 +62,10 @@ void audio_waveforms_plugin_register_with_registrar(FlPluginRegistrar* registrar
   g_autoptr(FlMethodChannel) channel = fl_method_channel_new(
       fl_plugin_registrar_get_messenger(registrar),
       "simform_audio_waveforms_plugin/methods",
+      FL_METHOD_CODEC(codec));
+  plugin->desktop_channel = fl_method_channel_new(
+      fl_plugin_registrar_get_messenger(registrar),
+      "simform_audio_waveforms_plugin/desktop",
       FL_METHOD_CODEC(codec));
   fl_method_channel_set_method_call_handler(channel, method_call_cb,
                                             g_object_ref(plugin),

@@ -12,7 +12,7 @@ class AudioWaveformsPlugin : public flutter::Plugin {
  public:
   static void RegisterWithRegistrar(flutter::PluginRegistrarWindows *registrar);
 
-  AudioWaveformsPlugin();
+  AudioWaveformsPlugin(std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> desktop);
   virtual ~AudioWaveformsPlugin();
 
   // Disallow copy and assign.
@@ -21,6 +21,9 @@ class AudioWaveformsPlugin : public flutter::Plugin {
 
   void HandleMethodCall(const flutter::MethodCall<flutter::EncodableValue>& call,
                         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+ private:
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> desktop_channel_;
 };
 
 }  // namespace audio_waveforms

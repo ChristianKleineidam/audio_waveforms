@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:just_audio/just_audio.dart';
 import 'package:record/record.dart' show AudioRecorder, RecordConfig, AudioEncoder;
+import 'package:flutter/services.dart';
 import 'package:just_waveform/just_waveform.dart';
 
 import '../models/recorder_settings.dart';
@@ -12,7 +13,25 @@ import 'utils.dart';
 class DesktopAudioHandler {
   DesktopAudioHandler({AudioRecorder? recorder, AudioPlayer Function()? playerFactory})
       : _recorder = recorder ?? AudioRecorder(),
-        _playerFactory = playerFactory ?? (() => AudioPlayer());
+        _playerFactory = playerFactory ?? (() => AudioPlayer()) {
+    _desktopChannel.setMethodCallHandler(_handleMethodCall);
+  }
+
+  static const MethodChannel _desktopChannel =
+      MethodChannel(Constants.desktopChannelName);
+
+  Future<dynamic> _handleMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case Constants.checkPermission:
+        return checkPermission();
+      default:
+        throw PlatformException(
+          code: 'AudioWaveforms',
+          message: 'Method not implemented',
+          details: call.method,
+        );
+    }
+  }
 
   final AudioRecorder _recorder;
   final AudioPlayer Function() _playerFactory;
