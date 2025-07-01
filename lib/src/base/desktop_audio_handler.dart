@@ -2,21 +2,38 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:just_audio/just_audio.dart';
-import 'package:record/record.dart' show AudioRecorder, RecordConfig, AudioEncoder;
+import 'package:record/record.dart'
+    show AudioRecorder, RecordConfig, AudioEncoder;
 import 'package:just_waveform/just_waveform.dart';
+
+import 'platform_streams.dart';
+import 'player_identifier.dart';
 
 import '../models/recorder_settings.dart';
 import 'constants.dart';
 import 'utils.dart';
 
+typedef _Extractor = Stream<WaveformProgress> Function({
+  required File audioInFile,
+  required File waveOutFile,
+  WaveformZoom zoom,
+});
+
 class DesktopAudioHandler {
-  DesktopAudioHandler({AudioRecorder? recorder, AudioPlayer Function()? playerFactory})
-      : _recorder = recorder ?? AudioRecorder(),
-        _playerFactory = playerFactory ?? (() => AudioPlayer());
+  DesktopAudioHandler({
+    AudioRecorder? recorder,
+    AudioPlayer Function()? playerFactory,
+    _Extractor? extractor,
+  })  : _recorder = recorder ?? AudioRecorder(),
+        _playerFactory = playerFactory ?? (() => AudioPlayer()),
+        _extractor = extractor ?? JustWaveform.extract;
 
   final AudioRecorder _recorder;
   final AudioPlayer Function() _playerFactory;
   final Map<String, AudioPlayer> _players = {};
+  final _Extractor _extractor;
+  final Map<String, StreamSubscription<WaveformProgress>>
+      _extractSubscriptions = {};
 
   Future<bool> record({
     required RecorderSettings settings,
@@ -36,7 +53,8 @@ class DesktopAudioHandler {
     return true;
   }
 
-  Future<bool> initRecorder({String? path, required RecorderSettings settings}) async {
+  Future<bool> initRecorder(
+      {String? path, required RecorderSettings settings}) async {
     return true;
   }
 
@@ -52,7 +70,10 @@ class DesktopAudioHandler {
     await player.setFilePath(filePath);
     final duration = player.duration?.inMilliseconds ?? 0;
     await player.dispose();
-    return {Constants.resultFilePath: filePath, Constants.resultDuration: duration};
+    return {
+      Constants.resultFilePath: filePath,
+      Constants.resultDuration: duration
+    };
   }
 
   Future<bool> resume() async {
@@ -158,30 +179,48 @@ class DesktopAudioHandler {
     required String path,
     required int noOfSamples,
   }) async {
-    final tempFile = File('${(await Directory.systemTemp.createTemp()).path}/waveform_$key');
-    final stream = JustWaveform.extract(
+    await stopWaveformExtraction(key);
+    final tempFile =
+        File('${(await Directory.systemTemp.createTemp()).path}/waveform_$key');
+    final completer = Completer<List<double>>();
+    late final StreamSubscription<WaveformProgress> subscription;
+    subscription = _extractor(
       audioInFile: File(path),
       waveOutFile: tempFile,
       zoom: WaveformZoom.pixelsPerSecond(noOfSamples),
-    );
-    final completer = Completer<List<double>>();
-    stream.listen(
+    ).listen(
       (event) {
+        PlatformStreams.instance.addExtractionProgress(
+          PlayerIdentifier<double>(key, event.progress),
+        );
         if (event.progress == 1.0 && event.waveform != null) {
           final waveform = event.waveform!;
           final points = <double>[];
           for (var i = 0; i < waveform.length; i++) {
             points.add(waveform.getPixelMax(i).toDouble());
           }
-          completer.complete(points);
+          PlatformStreams.instance.addExtractedWaveformDataEvent(
+            PlayerIdentifier<List<double>>(key, points),
+          );
+          subscription.cancel();
+          _extractSubscriptions.remove(key);
+          if (!completer.isCompleted) completer.complete(points);
         }
       },
-      onError: completer.completeError,
+      onError: (e, st) {
+        _extractSubscriptions.remove(key);
+        if (!completer.isCompleted) completer.completeError(e, st);
+      },
+      onDone: () => _extractSubscriptions.remove(key),
     );
+    _extractSubscriptions[key] = subscription;
     return completer.future;
   }
 
-  Future<void> stopWaveformExtraction(String key) async {}
+  Future<void> stopWaveformExtraction(String key) async {
+    final sub = _extractSubscriptions.remove(key);
+    await sub?.cancel();
+  }
 
   Future<bool> stopAllPlayers() async {
     for (final player in _players.values) {

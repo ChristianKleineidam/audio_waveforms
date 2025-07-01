@@ -1,18 +1,26 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:audio_waveforms/src/base/desktop_audio_handler.dart';
 import 'package:audio_waveforms/src/models/recorder_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:record/record.dart' show AudioRecorder, RecordConfig, AudioEncoder;
+import 'package:record/record.dart'
+    show AudioRecorder, RecordConfig, AudioEncoder;
 import 'package:just_audio/just_audio.dart';
+import 'package:just_waveform/just_waveform.dart';
+import 'package:audio_waveforms/src/base/platform_streams.dart';
 import 'desktop_audio_handler_test.mocks.dart';
 
 @GenerateMocks([AudioRecorder, AudioPlayer])
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   test('record starts recording when permission granted', () async {
     final mockRecorder = MockAudioRecorder();
     when(mockRecorder.hasPermission()).thenAnswer((_) async => true);
-    when(mockRecorder.start(any, path: anyNamed('path'))).thenAnswer((_) async {});
+    when(mockRecorder.start(any, path: anyNamed('path')))
+        .thenAnswer((_) async {});
 
     final handler = DesktopAudioHandler(
       recorder: mockRecorder,
@@ -98,4 +106,72 @@ void main() {
       verify(mockPlayer.seek(const Duration(milliseconds: 500))).called(1);
     });
   });
+
+  group('waveform extraction', () {
+    const key = 'extract';
+    late StreamController<WaveformProgress> controller;
+    late DesktopAudioHandler handler;
+
+    setUp(() {
+      controller = StreamController<WaveformProgress>();
+      handler = DesktopAudioHandler(
+        recorder: MockAudioRecorder(),
+        playerFactory: () => MockAudioPlayer(),
+        extractor: (
+            {required File audioInFile,
+            required File waveOutFile,
+            WaveformZoom zoom = const WaveformZoom.pixelsPerSecond(100)}) {
+          return controller.stream;
+        },
+      );
+      PlatformStreams.instance.init();
+    });
+
+    tearDown(() {
+      PlatformStreams.instance.dispose();
+    });
+
+    test('extractWaveformData returns computed points', () async {
+      final waveform = Waveform(
+        version: 0,
+        flags: 0,
+        sampleRate: 1,
+        samplesPerPixel: 1,
+        length: 2,
+        data: [0, 10, 0, 20],
+      );
+
+      final future = handler.extractWaveformData(
+        key: key,
+        path: 'foo',
+        noOfSamples: 10,
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      controller.add(_FakeWaveformProgress(1.0, waveform));
+      await controller.close();
+
+      final result = await future;
+      expect(result, equals([10.0, 20.0]));
+    });
+
+    test('stopWaveformExtraction cancels subscription', () async {
+      handler.extractWaveformData(key: key, path: 'foo', noOfSamples: 10);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(controller.hasListener, isTrue);
+
+      await handler.stopWaveformExtraction(key);
+      expect(controller.hasListener, isFalse);
+    });
+  });
+}
+
+class _FakeWaveformProgress implements WaveformProgress {
+  @override
+  final double progress;
+
+  @override
+  final Waveform? waveform;
+
+  _FakeWaveformProgress(this.progress, this.waveform);
 }
