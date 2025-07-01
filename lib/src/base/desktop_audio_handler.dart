@@ -1,22 +1,30 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:just_audio/just_audio.dart';
-import 'package:record/record.dart' show AudioRecorder, RecordConfig, AudioEncoder;
+import 'package:just_audio/just_audio.dart' as ja;
+import 'package:record/record.dart'
+    show AudioRecorder, RecordConfig, AudioEncoder;
 import 'package:just_waveform/just_waveform.dart';
 
 import '../models/recorder_settings.dart';
 import 'constants.dart';
 import 'utils.dart';
+import 'platform_streams.dart';
+import 'player_identifier.dart';
 
 class DesktopAudioHandler {
-  DesktopAudioHandler({AudioRecorder? recorder, AudioPlayer Function()? playerFactory})
+  DesktopAudioHandler(
+      {AudioRecorder? recorder, ja.AudioPlayer Function()? playerFactory})
       : _recorder = recorder ?? AudioRecorder(),
-        _playerFactory = playerFactory ?? (() => AudioPlayer());
+        _playerFactory = playerFactory ?? (() => ja.AudioPlayer());
 
   final AudioRecorder _recorder;
-  final AudioPlayer Function() _playerFactory;
-  final Map<String, AudioPlayer> _players = {};
+  final ja.AudioPlayer Function() _playerFactory;
+  final Map<String, ja.AudioPlayer> _players = {};
+  final Map<String, Timer> _durationTimers = {};
+  final Map<String, StreamSubscription<ja.PlayerState>> _stateSubscriptions =
+      {};
+  final Map<String, int> _frequencies = {};
 
   Future<bool> record({
     required RecorderSettings settings,
@@ -36,7 +44,8 @@ class DesktopAudioHandler {
     return true;
   }
 
-  Future<bool> initRecorder({String? path, required RecorderSettings settings}) async {
+  Future<bool> initRecorder(
+      {String? path, required RecorderSettings settings}) async {
     return true;
   }
 
@@ -48,11 +57,14 @@ class DesktopAudioHandler {
   Future<Map<String, dynamic>> stop() async {
     final filePath = await _recorder.stop();
     if (filePath == null) return {};
-    final player = AudioPlayer();
+    final player = ja.AudioPlayer();
     await player.setFilePath(filePath);
     final duration = player.duration?.inMilliseconds ?? 0;
     await player.dispose();
-    return {Constants.resultFilePath: filePath, Constants.resultDuration: duration};
+    return {
+      Constants.resultFilePath: filePath,
+      Constants.resultDuration: duration
+    };
   }
 
   Future<bool> resume() async {
@@ -76,8 +88,23 @@ class DesktopAudioHandler {
     double? volume,
   }) async {
     final player = _players.putIfAbsent(key, () => _playerFactory());
+    _frequencies[key] = frequency;
     await player.setFilePath(path);
     if (volume != null) await player.setVolume(volume.clamp(0.0, 1.0));
+    _stateSubscriptions[key]?.cancel();
+    _stateSubscriptions[key] = player.playerStateStream.listen((state) {
+      if (state.processingState == ja.ProcessingState.completed) {
+        if (PlatformStreams.instance.isInitialised) {
+          PlatformStreams.instance.addCompletionEvent(
+            PlayerIdentifier<void>(key, null),
+          );
+          PlatformStreams.instance.addPlayerStateEvent(
+            PlayerIdentifier<PlayerState>(key, PlayerState.stopped),
+          );
+        }
+        _durationTimers[key]?.cancel();
+      }
+    });
     return true;
   }
 
@@ -85,6 +112,19 @@ class DesktopAudioHandler {
     final player = _players[key];
     if (player == null) return false;
     await player.play();
+    _durationTimers[key]?.cancel();
+    final freq = _frequencies[key] ?? 200;
+    _durationTimers[key] = Timer.periodic(
+      Duration(milliseconds: freq),
+      (_) {
+        final pos = player.position.inMilliseconds;
+        if (PlatformStreams.instance.isInitialised) {
+          PlatformStreams.instance.addCurrentDurationEvent(
+            PlayerIdentifier<int>(key, pos),
+          );
+        }
+      },
+    );
     return true;
   }
 
@@ -92,11 +132,15 @@ class DesktopAudioHandler {
     final player = _players[key];
     if (player == null) return false;
     await player.stop();
+    _durationTimers.remove(key)?.cancel();
     return true;
   }
 
   Future<bool> release(String key) async {
     final player = _players.remove(key);
+    _durationTimers.remove(key)?.cancel();
+    _stateSubscriptions.remove(key)?.cancel();
+    _frequencies.remove(key);
     await player?.dispose();
     return true;
   }
@@ -105,6 +149,7 @@ class DesktopAudioHandler {
     final player = _players[key];
     if (player == null) return false;
     await player.pause();
+    _durationTimers.remove(key)?.cancel();
     return true;
   }
 
@@ -143,7 +188,7 @@ class DesktopAudioHandler {
     final player = _players[key];
     if (player == null) return;
     player.playerStateStream.listen((state) {
-      if (state.processingState == ProcessingState.completed) {
+      if (state.processingState == ja.ProcessingState.completed) {
         if (mode == FinishMode.pause) {
           player.pause();
         } else {
@@ -158,7 +203,8 @@ class DesktopAudioHandler {
     required String path,
     required int noOfSamples,
   }) async {
-    final tempFile = File('${(await Directory.systemTemp.createTemp()).path}/waveform_$key');
+    final tempFile =
+        File('${(await Directory.systemTemp.createTemp()).path}/waveform_$key');
     final stream = JustWaveform.extract(
       audioInFile: File(path),
       waveOutFile: tempFile,
@@ -184,15 +230,17 @@ class DesktopAudioHandler {
   Future<void> stopWaveformExtraction(String key) async {}
 
   Future<bool> stopAllPlayers() async {
-    for (final player in _players.values) {
-      await player.stop();
+    for (final entry in _players.entries) {
+      await entry.value.stop();
+      _durationTimers.remove(entry.key)?.cancel();
     }
     return true;
   }
 
   Future<bool> pauseAllPlayers() async {
-    for (final player in _players.values) {
-      await player.pause();
+    for (final entry in _players.entries) {
+      await entry.value.pause();
+      _durationTimers.remove(entry.key)?.cancel();
     }
     return true;
   }
