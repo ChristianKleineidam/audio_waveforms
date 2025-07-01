@@ -19,6 +19,7 @@ any position while playing audio and style waveforms.
         audio_waveforms: <latest-version>
     ```
 2. Make sure delete the app from your device and perform `flutter clean` and then `flutter pub get`
+3. Ensure your Android build is configured for Java 21 and Kotlin 2.x.
 
 # Usage
 ## Recorder

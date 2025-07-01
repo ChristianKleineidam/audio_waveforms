@@ -13,6 +13,7 @@
 - **BREAKING:**
   - Remove duplicate parameters from RecorderController.
   - Add `RecorderSettings` model for all the recording settings.
+- **BREAKING:** Require Java 21 and Kotlin 2.x for the Android build.
 
 ## 1.3.0
 
