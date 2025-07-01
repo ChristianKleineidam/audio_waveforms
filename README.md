@@ -46,14 +46,26 @@ operating system.
 **macOS**
 
 - Add a microphone usage description to `macos/Runner/Info.plist`.
+  
+  ```xml
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Need microphone access to record audio waveforms.</string>
+  ```
 
 **Windows**
 
 - Declare the `microphone` capability in the application manifest.
+  
+  ```xml
+  <Capabilities>
+      <DeviceCapability Name="microphone" />
+  </Capabilities>
+  ```
 
 **Linux**
 
-- Ensure PulseAudio (or another supported backend) is available.
+- Ensure PulseAudio (or another supported backend) is available. Linux does not
+  require special microphone permissions, but PulseAudio is needed for capture.
 
 </details>
 <details>
