@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../audio_waveforms.dart';
+import '../base/label.dart';
+import '../base/utils.dart';
 
 class PlayerWavePainter extends CustomPainter {
   final List<double> waveformData;
@@ -15,6 +17,12 @@ class PlayerWavePainter extends CustomPainter {
   final WaveformType waveformType;
 
   final PlayerWaveStyle playerWaveStyle;
+
+  late final Paint _durationLinePaint = Paint()
+    ..strokeWidth = 3
+    ..color = playerWaveStyle.durationLinesColor;
+
+  final List<Label> _labels = [];
 
   PlayerWavePainter({
     required this.waveformData,
@@ -97,7 +105,42 @@ class PlayerWavePainter extends CustomPainter {
           Offset(dx, topDy),
           i < audioProgress * length ? liveWavePaint : fixedWavePaint,
         );
+        if (playerWaveStyle.showDurationLabel) {
+          _addLabel(canvas, dx, size, i);
+          _drawTextInRange(canvas, i, size);
+        }
       }
     }
+  }
+
+  void _addLabel(Canvas canvas, double dx, Size size, int index) {
+    canvas.drawLine(
+      Offset(dx, size.height),
+      Offset(dx, size.height + playerWaveStyle.durationLinesHeight),
+      _durationLinePaint,
+    );
+    final labelDuration = Duration(seconds: index);
+    _labels.add(
+      Label(
+        content: playerWaveStyle.showHourInDuration
+            ? labelDuration.toHHMMSS()
+            : labelDuration.inSeconds.toMMSS(),
+        offset: Offset(
+          dx - playerWaveStyle.durationTextPadding,
+          size.height + playerWaveStyle.labelSpacing,
+        ),
+      ),
+    );
+  }
+
+  void _drawTextInRange(Canvas canvas, int index, Size size) {
+    if (_labels.isEmpty || index >= _labels.length) return;
+    final label = _labels[index];
+    final textPainter = TextPainter(
+      text: TextSpan(text: label.content, style: playerWaveStyle.durationStyle),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout(minWidth: 0, maxWidth: size.width);
+    textPainter.paint(canvas, label.offset);
   }
 }

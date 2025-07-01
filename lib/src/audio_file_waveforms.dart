@@ -237,8 +237,7 @@ class _AudioFileWaveformsState extends State<AudioFileWaveforms>
         onHorizontalDragEnd: widget.enableSeekGesture ? _handleOnDragEnd : null,
         onTapDown: widget.enableSeekGesture ? _handleOnTapDown : null,
         child: ClipPath(
-          // TODO: Update extraClipperHeight when duration labels are added
-          clipper: WaveClipper(extraClipperHeight: 0),
+          clipper: WaveClipper(extraClipperHeight: _extraClipperHeight),
           child: RepaintBoundary(
             child: ValueListenableBuilder<int>(
               builder: (_, __, ___) {
@@ -297,6 +296,18 @@ class _AudioFileWaveformsState extends State<AudioFileWaveforms>
       ..clear()
       ..addAll(data);
     if (mounted) setState(() {});
+  }
+
+  double get _extraClipperHeight {
+    if (playerWaveStyle.showDurationLabel) {
+      if (playerWaveStyle.extraClipperHeight != null) {
+        return playerWaveStyle.extraClipperHeight!;
+      }
+      return playerWaveStyle.durationLinesHeight +
+          (playerWaveStyle.durationStyle.fontSize ??
+              playerWaveStyle.durationLinesHeight);
+    }
+    return 0;
   }
 
   void _handleDragGestures(DragUpdateDetails details) {
