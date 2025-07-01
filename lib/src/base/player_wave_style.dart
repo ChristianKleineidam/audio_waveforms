@@ -52,6 +52,31 @@ class PlayerWaveStyle {
   /// Shows seek line in the middle when enabled.
   final bool showSeekLine;
 
+  /// Render duration labels below the waveform when enabled.
+  final bool showDurationLabel;
+
+  /// Show duration label in HH:MM:SS format. Default is MM:SS
+  final bool showHourInDuration;
+
+  /// Text style for duration labels
+  final TextStyle durationStyle;
+
+  /// Color of duration lines
+  final Color durationLinesColor;
+
+  /// Height of duration lines
+  final double durationLinesHeight;
+
+  /// Space between duration labels and waveform square
+  final double labelSpacing;
+
+  /// It might happen that label text gets cut or have extra clipping. Use this
+  /// to override the calculated clipping height.
+  final double? extraClipperHeight;
+
+  /// Value > 0 will be padded right and value < 0 will be padded left.
+  final double durationTextPadding;
+
   const PlayerWaveStyle({
     this.fixedWaveColor = Colors.white54,
     this.liveWaveColor = Colors.white,
@@ -68,6 +93,17 @@ class PlayerWaveStyle {
     this.liveWaveGradient,
     this.spacing = 5,
     this.scrollScale = 1.0,
+    this.showDurationLabel = false,
+    this.showHourInDuration = false,
+    this.durationStyle = const TextStyle(
+      color: Colors.red,
+      fontSize: 16.0,
+    ),
+    this.durationLinesColor = Colors.blueAccent,
+    this.durationLinesHeight = 16.0,
+    this.labelSpacing = 16.0,
+    this.extraClipperHeight,
+    this.durationTextPadding = 20.0,
   })  : assert(spacing >= 0),
         assert(waveThickness < spacing,
             "waveThickness can't be greater than spacing");
