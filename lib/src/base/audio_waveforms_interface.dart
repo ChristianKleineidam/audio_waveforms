@@ -5,6 +5,8 @@ class AudioWaveformsInterface {
 
   static AudioWaveformsInterface instance = AudioWaveformsInterface._();
 
+  final DesktopAudioHandler _desktopHandler = DesktopAudioHandler();
+
   static const MethodChannel _methodChannel =
       MethodChannel(Constants.methodChannelName);
 
@@ -15,6 +17,12 @@ class AudioWaveformsInterface {
     bool useLegacyNormalization = false,
     bool overrideAudioSession = true,
   }) async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.record(
+        settings: recorderSetting,
+        path: path,
+      );
+    }
     final isRecording = await _methodChannel.invokeMethod(
       Constants.startRecording,
       (Platform.isIOS || Platform.isMacOS)
@@ -36,6 +44,12 @@ class AudioWaveformsInterface {
     String? path,
     required RecorderSettings recorderSettings,
   }) async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.initRecorder(
+        path: path,
+        settings: recorderSettings,
+      );
+    }
     final initialized = await _methodChannel.invokeMethod(
       Constants.initRecorder,
       recorderSettings.androidToJson(path: path),
@@ -45,6 +59,9 @@ class AudioWaveformsInterface {
 
   ///platform call to pause recording
   Future<bool?> pause() async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.pause();
+    }
     final isRecording =
         await _methodChannel.invokeMethod(Constants.pauseRecording);
     return isRecording;
@@ -52,6 +69,9 @@ class AudioWaveformsInterface {
 
   ///platform call to stop recording
   Future<Map<String, dynamic>> stop() async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.stop();
+    }
     Map<Object?, Object?> audioInfo =
         await _methodChannel.invokeMethod(Constants.stopRecording);
     return audioInfo.cast<String, dynamic>();
@@ -60,6 +80,9 @@ class AudioWaveformsInterface {
   ///platform call to resume recording.
   ///This method is only required for Android platform
   Future<bool> resume() async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.resume();
+    }
     final isRecording =
         await _methodChannel.invokeMethod(Constants.resumeRecording);
     return isRecording ?? false;
@@ -67,12 +90,18 @@ class AudioWaveformsInterface {
 
   ///platform call to get decibel
   Future<double?> getDecibel() async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.getDecibel();
+    }
     var db = await _methodChannel.invokeMethod(Constants.getDecibel);
     return db;
   }
 
   ///platform call to check microphone permission
   Future<bool> checkPermission() async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.checkPermission();
+    }
     var hasPermission =
         await _methodChannel.invokeMethod(Constants.checkPermission);
     return hasPermission ?? false;
@@ -86,6 +115,14 @@ class AudioWaveformsInterface {
     double? volume,
     bool overrideAudioSession = false,
   }) async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.preparePlayer(
+        path: path,
+        key: key,
+        frequency: frequency,
+        volume: volume,
+      );
+    }
     var result = await _methodChannel.invokeMethod(Constants.preparePlayer, {
       Constants.path: path,
       Constants.volume: volume,
@@ -98,6 +135,9 @@ class AudioWaveformsInterface {
 
   ///platform call to start player
   Future<bool> startPlayer(String key) async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.startPlayer(key);
+    }
     var result = await _methodChannel.invokeMethod(Constants.startPlayer, {
       Constants.playerKey: key,
     });
@@ -106,6 +146,9 @@ class AudioWaveformsInterface {
 
   ///platform call to stop player
   Future<bool> stopPlayer(String key) async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.stopPlayer(key);
+    }
     var result = await _methodChannel.invokeMethod(Constants.stopPlayer, {
       Constants.playerKey: key,
     });
@@ -114,6 +157,9 @@ class AudioWaveformsInterface {
 
   ///platform call to release resource
   Future<bool> release(String key) async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.release(key);
+    }
     var result = await _methodChannel.invokeMethod(Constants.releasePlayer, {
       Constants.playerKey: key,
     });
@@ -122,6 +168,9 @@ class AudioWaveformsInterface {
 
   ///platform call to pause player
   Future<bool> pausePlayer(String key) async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.pausePlayer(key);
+    }
     var result = await _methodChannel.invokeMethod(Constants.pausePlayer, {
       Constants.playerKey: key,
     });
@@ -130,6 +179,9 @@ class AudioWaveformsInterface {
 
   ///platform call to get duration max/current
   Future<int?> getDuration(String key, int durationType) async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.getDuration(key, durationType);
+    }
     var duration = await _methodChannel.invokeMethod(Constants.getDuration, {
       Constants.durationType: durationType,
       Constants.playerKey: key,
@@ -139,6 +191,9 @@ class AudioWaveformsInterface {
 
   ///platform call to set volume
   Future<bool> setVolume(double volume, String key) async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.setVolume(volume, key);
+    }
     var result = await _methodChannel.invokeMethod(Constants.setVolume, {
       Constants.volume: volume,
       Constants.playerKey: key,
@@ -148,6 +203,9 @@ class AudioWaveformsInterface {
 
   ///platform call to set rate
   Future<bool> setRate(double rate, String key) async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.setRate(rate, key);
+    }
     var result = await _methodChannel.invokeMethod(Constants.setRate, {
       Constants.rate: rate,
       Constants.playerKey: key,
@@ -157,6 +215,9 @@ class AudioWaveformsInterface {
 
   ///platform call to seek audio at provided position
   Future<bool> seekTo(String key, int progress) async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.seekTo(key, progress);
+    }
     var result = await _methodChannel.invokeMethod(Constants.seekTo,
         {Constants.progress: progress, Constants.playerKey: key});
     return result ?? false;
@@ -164,6 +225,9 @@ class AudioWaveformsInterface {
 
   /// Sets the release mode.
   Future<void> setReleaseMode(String key, FinishMode finishMode) async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.setReleaseMode(key, finishMode);
+    }
     return await _methodChannel.invokeMethod(Constants.finishMode, {
       Constants.finishType: finishMode.index,
       Constants.playerKey: key,
@@ -175,6 +239,13 @@ class AudioWaveformsInterface {
     required String path,
     required int noOfSamples,
   }) async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.extractWaveformData(
+        key: key,
+        path: path,
+        noOfSamples: noOfSamples,
+      );
+    }
     final result =
         await _methodChannel.invokeMethod(Constants.extractWaveformData, {
       Constants.playerKey: key,
@@ -186,17 +257,26 @@ class AudioWaveformsInterface {
 
   /// Stops current executing waveform extraction, if any.
   Future<void> stopWaveformExtraction(String key) async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.stopWaveformExtraction(key);
+    }
     return await _methodChannel.invokeMethod(Constants.stopExtraction, {
       Constants.playerKey: key,
     });
   }
 
   Future<bool> stopAllPlayers() async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.stopAllPlayers();
+    }
     var result = await _methodChannel.invokeMethod(Constants.stopAllPlayers);
     return result ?? false;
   }
 
   Future<bool> pauseAllPlayers() async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return _desktopHandler.pauseAllPlayers();
+    }
     var result = await _methodChannel.invokeMethod(Constants.pauseAllPlayers);
     return result ?? false;
   }
