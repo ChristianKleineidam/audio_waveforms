@@ -97,5 +97,51 @@ void main() {
       expect(success, isTrue);
       verify(mockPlayer.seek(const Duration(milliseconds: 500))).called(1);
     });
+
+    test('stopAllPlayers stops all active players', () async {
+      await handler.preparePlayer(path: testPath, key: 'k1', frequency: 1);
+      await handler.preparePlayer(path: testPath, key: 'k2', frequency: 1);
+
+      final result = await handler.stopAllPlayers();
+
+      expect(result, isTrue);
+      verify(mockPlayer.stop()).called(2);
+    });
+
+    test('pauseAllPlayers pauses all active players', () async {
+      await handler.preparePlayer(path: testPath, key: 'k1', frequency: 1);
+      await handler.preparePlayer(path: testPath, key: 'k2', frequency: 1);
+
+      final result = await handler.pauseAllPlayers();
+
+      expect(result, isTrue);
+      verify(mockPlayer.pause()).called(2);
+    });
+  });
+
+  test('initRecorder sets config used in record', () async {
+    final mockRecorder = MockAudioRecorder();
+    when(mockRecorder.hasPermission()).thenAnswer((_) async => true);
+    when(mockRecorder.start(any, path: anyNamed('path'))).thenAnswer((_) async {});
+
+    final handler = DesktopAudioHandler(
+      recorder: mockRecorder,
+      playerFactory: () => MockAudioPlayer(),
+    );
+
+    const settings = RecorderSettings(bitRate: 256000, sampleRate: 48000);
+    const initPath = '/tmp/init.m4a';
+
+    final init = await handler.initRecorder(path: initPath, settings: settings);
+    expect(init, isTrue);
+
+    await handler.record(settings: const RecorderSettings());
+
+    final captured = verify(mockRecorder.start(captureAny, path: captureAnyNamed('path'))).captured;
+    final RecordConfig config = captured[0] as RecordConfig;
+    final String? usedPath = captured[1] as String?;
+    expect(usedPath, initPath);
+    expect(config.bitRate, settings.bitRate);
+    expect(config.sampleRate, settings.sampleRate);
   });
 }

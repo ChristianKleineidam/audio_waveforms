@@ -17,26 +17,40 @@ class DesktopAudioHandler {
   final AudioRecorder _recorder;
   final AudioPlayer Function() _playerFactory;
   final Map<String, AudioPlayer> _players = {};
+  String? _initRecordPath;
+  RecordConfig? _initRecordConfig;
 
   Future<bool> record({
     required RecorderSettings settings,
     String? path,
   }) async {
     if (!await _recorder.hasPermission()) return false;
-    final recordPath = path ??
-        '${(await Directory.systemTemp.createTemp()).path}/recording.m4a';
+    final recordPath =
+        path ?? _initRecordPath ?? '${(await Directory.systemTemp.createTemp()).path}/recording.m4a';
+    final config = _initRecordConfig ??
+        RecordConfig(
+          encoder: AudioEncoder.aacLc,
+          bitRate: settings.bitRate ?? 128000,
+          sampleRate: settings.sampleRate ?? 44100,
+        );
     await _recorder.start(
-      RecordConfig(
-        encoder: AudioEncoder.aacLc,
-        bitRate: settings.bitRate ?? 128000,
-        sampleRate: settings.sampleRate ?? 44100,
-      ),
+      config,
       path: recordPath,
     );
+    _initRecordPath = null;
+    _initRecordConfig = null;
     return true;
   }
 
   Future<bool> initRecorder({String? path, required RecorderSettings settings}) async {
+    if (!await _recorder.hasPermission()) return false;
+    _initRecordPath =
+        path ?? '${(await Directory.systemTemp.createTemp()).path}/recording.m4a';
+    _initRecordConfig = RecordConfig(
+      encoder: AudioEncoder.aacLc,
+      bitRate: settings.bitRate ?? 128000,
+      sampleRate: settings.sampleRate ?? 44100,
+    );
     return true;
   }
 
@@ -186,7 +200,9 @@ class DesktopAudioHandler {
   Future<bool> stopAllPlayers() async {
     for (final player in _players.values) {
       await player.stop();
+      await player.dispose();
     }
+    _players.clear();
     return true;
   }
 
