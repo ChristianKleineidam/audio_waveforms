@@ -48,11 +48,16 @@ class DesktopAudioHandler {
   Future<Map<String, dynamic>> stop() async {
     final filePath = await _recorder.stop();
     if (filePath == null) return {};
-    final player = AudioPlayer();
+
+    final player = _playerFactory();
     await player.setFilePath(filePath);
     final duration = player.duration?.inMilliseconds ?? 0;
     await player.dispose();
-    return {Constants.resultFilePath: filePath, Constants.resultDuration: duration};
+
+    return {
+      Constants.resultFilePath: filePath,
+      Constants.resultDuration: duration,
+    };
   }
 
   Future<bool> resume() async {

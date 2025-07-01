@@ -1,5 +1,6 @@
 import 'package:audio_waveforms/src/base/desktop_audio_handler.dart';
 import 'package:audio_waveforms/src/models/recorder_settings.dart';
+import 'package:audio_waveforms/src/base/constants.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
@@ -26,6 +27,53 @@ void main() {
       any,
       path: anyNamed('path'),
     )).called(1);
+  });
+
+  group('recorder controls', () {
+    late MockAudioRecorder mockRecorder;
+    late MockAudioPlayer mockPlayer;
+    late DesktopAudioHandler handler;
+
+    setUp(() {
+      mockRecorder = MockAudioRecorder();
+      mockPlayer = MockAudioPlayer();
+      handler = DesktopAudioHandler(
+        recorder: mockRecorder,
+        playerFactory: () => mockPlayer,
+      );
+
+      when(mockRecorder.stop()).thenAnswer((_) async => '/tmp/record.m4a');
+      when(mockRecorder.pause()).thenAnswer((_) async {});
+      when(mockRecorder.resume()).thenAnswer((_) async {});
+
+      when(mockPlayer.setFilePath(any)).thenAnswer((_) async => null);
+      when(mockPlayer.dispose()).thenAnswer((_) async {});
+      when(mockPlayer.duration).thenReturn(const Duration(milliseconds: 1200));
+    });
+
+    test('pause calls pause on AudioRecorder', () async {
+      final result = await handler.pause();
+
+      expect(result, isTrue);
+      verify(mockRecorder.pause()).called(1);
+    });
+
+    test('resume calls resume on AudioRecorder', () async {
+      final result = await handler.resume();
+
+      expect(result, isTrue);
+      verify(mockRecorder.resume()).called(1);
+    });
+
+    test('stop returns path and duration', () async {
+      final result = await handler.stop();
+
+      expect(result[Constants.resultFilePath], '/tmp/record.m4a');
+      expect(result[Constants.resultDuration], 1200);
+      verify(mockRecorder.stop()).called(1);
+      verify(mockPlayer.setFilePath('/tmp/record.m4a')).called(1);
+      verify(mockPlayer.dispose()).called(1);
+    });
   });
 
   group('player controls', () {
