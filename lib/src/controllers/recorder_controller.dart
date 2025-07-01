@@ -25,7 +25,7 @@ class RecorderController extends ChangeNotifier {
   double normalizationFactor = Platform.isAndroid ? 60 : 40;
 
   /// Current maximum peak power for ios and peak amplitude android.
-  double _maxPeak = Platform.isIOS ? 1 : 32786.0;
+  double _maxPeak = (Platform.isIOS || Platform.isMacOS) ? 1 : 32786.0;
 
   /// Current min value.
   double _currentMin = 0;
@@ -197,7 +197,7 @@ class RecorderController extends ChangeNotifier {
           notifyListeners();
           return;
         }
-        if (Platform.isIOS) {
+        if (Platform.isIOS || Platform.isMacOS) {
           _setRecorderState(RecorderState.initialized);
         }
         if (_recorderState.isInitialized) {

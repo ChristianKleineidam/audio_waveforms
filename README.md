@@ -38,6 +38,25 @@ Add RECORD_AUDIO permission in `AndroidManifest.xml`
 ```
 </details>
 <details>
+<summary>Desktop</summary>
+
+To experiment with desktop platforms you must configure microphone access on each
+operating system.
+
+**macOS**
+
+- Add a microphone usage description to `macos/Runner/Info.plist`.
+
+**Windows**
+
+- Declare the `microphone` capability in the application manifest.
+
+**Linux**
+
+- Ensure PulseAudio (or another supported backend) is available.
+
+</details>
+<details>
 <summary>IOS</summary>
 
 Add description to your microphone usage in `ios/Runner/Info.plist`,
