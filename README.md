@@ -53,7 +53,9 @@ operating system.
 
 **Linux**
 
-- Ensure PulseAudio (or another supported backend) is available.
+- Ensure PulseAudio (or another supported backend) is available. For
+  Ubuntu/Debian based distributions run `sudo apt-get install pulseaudio`
+  and verify with `pulseaudio --version`.
 
 </details>
 <details>
