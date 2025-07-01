@@ -53,8 +53,17 @@ class DesktopAudioHandler {
     return true;
   }
 
-  Future<bool> initRecorder(
-      {String? path, required RecorderSettings settings}) async {
+  Future<bool> initRecorder({
+    String? path,
+    required RecorderSettings settings,
+  }) async {
+    if (!await _recorder.hasPermission()) return false;
+
+    if (path != null) {
+      final file = File(path);
+      await file.parent.create(recursive: true);
+    }
+
     return true;
   }
 

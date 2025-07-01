@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:audio_waveforms/src/base/utils.dart' show FinishMode;
 import 'package:audio_waveforms/src/base/desktop_audio_handler.dart';
@@ -13,6 +14,45 @@ import 'desktop_audio_handler_test.mocks.dart';
 
 @GenerateMocks([AudioRecorder, AudioPlayer])
 void main() {
+  group('initRecorder', () {
+    test('returns false when permission denied', () async {
+      final mockRecorder = MockAudioRecorder();
+      when(mockRecorder.hasPermission()).thenAnswer((_) async => false);
+
+      final handler = DesktopAudioHandler(
+        recorder: mockRecorder,
+        playerFactory: () => MockAudioPlayer(),
+      );
+
+      final result = await handler.initRecorder(
+        settings: const RecorderSettings(),
+      );
+
+      expect(result, isFalse);
+    });
+
+    test('creates directory when path provided', () async {
+      final mockRecorder = MockAudioRecorder();
+      when(mockRecorder.hasPermission()).thenAnswer((_) async => true);
+      final tempDir = await Directory.systemTemp.createTemp();
+      final path = '${tempDir.path}/nested/file.m4a';
+
+      final handler = DesktopAudioHandler(
+        recorder: mockRecorder,
+        playerFactory: () => MockAudioPlayer(),
+      );
+
+      final result = await handler.initRecorder(
+        path: path,
+        settings: const RecorderSettings(),
+      );
+
+      expect(result, isTrue);
+      expect(File(path).parent.existsSync(), isTrue);
+
+      await tempDir.delete(recursive: true);
+    });
+  });
   test('record starts recording when permission granted', () async {
     final mockRecorder = MockAudioRecorder();
     when(mockRecorder.hasPermission()).thenAnswer((_) async => true);
