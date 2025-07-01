@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:just_audio/just_audio.dart';
-import 'package:record/record.dart' show AudioRecorder, RecordConfig, AudioEncoder;
+import 'package:just_audio/just_audio.dart' as ja;
+import 'package:record/record.dart'
+    show AudioRecorder, RecordConfig, AudioEncoder;
 import 'package:just_waveform/just_waveform.dart';
 
 import '../models/recorder_settings.dart';
@@ -10,13 +11,14 @@ import 'constants.dart';
 import 'utils.dart';
 
 class DesktopAudioHandler {
-  DesktopAudioHandler({AudioRecorder? recorder, AudioPlayer Function()? playerFactory})
+  DesktopAudioHandler(
+      {AudioRecorder? recorder, ja.AudioPlayer Function()? playerFactory})
       : _recorder = recorder ?? AudioRecorder(),
-        _playerFactory = playerFactory ?? (() => AudioPlayer());
+        _playerFactory = playerFactory ?? (() => ja.AudioPlayer());
 
   final AudioRecorder _recorder;
-  final AudioPlayer Function() _playerFactory;
-  final Map<String, AudioPlayer> _players = {};
+  final ja.AudioPlayer Function() _playerFactory;
+  final Map<String, ja.AudioPlayer> _players = {};
 
   Future<bool> record({
     required RecorderSettings settings,
@@ -36,7 +38,8 @@ class DesktopAudioHandler {
     return true;
   }
 
-  Future<bool> initRecorder({String? path, required RecorderSettings settings}) async {
+  Future<bool> initRecorder(
+      {String? path, required RecorderSettings settings}) async {
     return true;
   }
 
@@ -48,11 +51,14 @@ class DesktopAudioHandler {
   Future<Map<String, dynamic>> stop() async {
     final filePath = await _recorder.stop();
     if (filePath == null) return {};
-    final player = AudioPlayer();
+    final player = ja.AudioPlayer();
     await player.setFilePath(filePath);
     final duration = player.duration?.inMilliseconds ?? 0;
     await player.dispose();
-    return {Constants.resultFilePath: filePath, Constants.resultDuration: duration};
+    return {
+      Constants.resultFilePath: filePath,
+      Constants.resultDuration: duration
+    };
   }
 
   Future<bool> resume() async {
@@ -139,18 +145,40 @@ class DesktopAudioHandler {
     return true;
   }
 
+  final Map<String, StreamSubscription<ja.PlayerState>>
+      _completionSubscriptions = {};
+
   Future<void> setReleaseMode(String key, FinishMode mode) async {
     final player = _players[key];
     if (player == null) return;
-    player.playerStateStream.listen((state) {
-      if (state.processingState == ProcessingState.completed) {
-        if (mode == FinishMode.pause) {
-          player.pause();
-        } else {
-          player.stop();
-        }
-      }
-    });
+
+    await _completionSubscriptions[key]?.cancel();
+    _completionSubscriptions.remove(key);
+
+    switch (mode) {
+      case FinishMode.loop:
+        await player.setLoopMode(ja.LoopMode.one);
+        break;
+      case FinishMode.pause:
+        await player.setLoopMode(ja.LoopMode.off);
+        _completionSubscriptions[key] =
+            player.playerStateStream.listen((state) {
+          if (state.processingState == ja.ProcessingState.completed) {
+            player.pause();
+            player.seek(Duration.zero);
+          }
+        });
+        break;
+      case FinishMode.stop:
+        await player.setLoopMode(ja.LoopMode.off);
+        _completionSubscriptions[key] =
+            player.playerStateStream.listen((state) {
+          if (state.processingState == ja.ProcessingState.completed) {
+            player.stop();
+          }
+        });
+        break;
+    }
   }
 
   Future<List<double>> extractWaveformData({
@@ -158,7 +186,8 @@ class DesktopAudioHandler {
     required String path,
     required int noOfSamples,
   }) async {
-    final tempFile = File('${(await Directory.systemTemp.createTemp()).path}/waveform_$key');
+    final tempFile =
+        File('${(await Directory.systemTemp.createTemp()).path}/waveform_$key');
     final stream = JustWaveform.extract(
       audioInFile: File(path),
       waveOutFile: tempFile,

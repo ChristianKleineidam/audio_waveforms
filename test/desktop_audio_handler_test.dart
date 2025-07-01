@@ -1,9 +1,13 @@
+import 'dart:async';
+
+import 'package:audio_waveforms/src/base/utils.dart' show FinishMode;
 import 'package:audio_waveforms/src/base/desktop_audio_handler.dart';
 import 'package:audio_waveforms/src/models/recorder_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:record/record.dart' show AudioRecorder, RecordConfig, AudioEncoder;
+import 'package:record/record.dart'
+    show AudioRecorder, RecordConfig, AudioEncoder;
 import 'package:just_audio/just_audio.dart';
 import 'desktop_audio_handler_test.mocks.dart';
 
@@ -12,7 +16,8 @@ void main() {
   test('record starts recording when permission granted', () async {
     final mockRecorder = MockAudioRecorder();
     when(mockRecorder.hasPermission()).thenAnswer((_) async => true);
-    when(mockRecorder.start(any, path: anyNamed('path'))).thenAnswer((_) async {});
+    when(mockRecorder.start(any, path: anyNamed('path')))
+        .thenAnswer((_) async {});
 
     final handler = DesktopAudioHandler(
       recorder: mockRecorder,
@@ -96,6 +101,70 @@ void main() {
 
       expect(success, isTrue);
       verify(mockPlayer.seek(const Duration(milliseconds: 500))).called(1);
+    });
+
+    test('setRate adjusts playback speed', () async {
+      await handler.preparePlayer(path: testPath, key: testKey, frequency: 1);
+
+      when(mockPlayer.setSpeed(any)).thenAnswer((_) async {});
+
+      final success = await handler.setRate(1.5, testKey);
+
+      expect(success, isTrue);
+      verify(mockPlayer.setSpeed(1.5)).called(1);
+    });
+
+    test('getDuration returns current and max duration', () async {
+      await handler.preparePlayer(path: testPath, key: testKey, frequency: 1);
+
+      when(mockPlayer.position).thenReturn(const Duration(milliseconds: 300));
+      when(mockPlayer.load()).thenAnswer((_) async {});
+      when(mockPlayer.duration).thenReturn(const Duration(milliseconds: 1000));
+
+      final current = await handler.getDuration(testKey, 0);
+      final max = await handler.getDuration(testKey, 1);
+
+      expect(current, 300);
+      expect(max, 1000);
+    });
+
+    test('setReleaseMode loop uses LoopMode.one', () async {
+      await handler.preparePlayer(path: testPath, key: testKey, frequency: 1);
+
+      when(mockPlayer.setLoopMode(any)).thenAnswer((_) async {});
+
+      await handler.setReleaseMode(testKey, FinishMode.loop);
+
+      verify(mockPlayer.setLoopMode(LoopMode.one)).called(1);
+    });
+
+    test('setReleaseMode pause pauses on completion', () async {
+      final controller = StreamController<PlayerState>();
+      when(mockPlayer.playerStateStream).thenAnswer((_) => controller.stream);
+      when(mockPlayer.setLoopMode(any)).thenAnswer((_) async {});
+
+      await handler.preparePlayer(path: testPath, key: testKey, frequency: 1);
+      await handler.setReleaseMode(testKey, FinishMode.pause);
+
+      controller.add(PlayerState(false, ProcessingState.completed));
+      await Future<void>.delayed(Duration.zero);
+
+      verify(mockPlayer.pause()).called(1);
+      verify(mockPlayer.seek(Duration.zero)).called(1);
+    });
+
+    test('setReleaseMode stop stops on completion', () async {
+      final controller = StreamController<PlayerState>();
+      when(mockPlayer.playerStateStream).thenAnswer((_) => controller.stream);
+      when(mockPlayer.setLoopMode(any)).thenAnswer((_) async {});
+
+      await handler.preparePlayer(path: testPath, key: testKey, frequency: 1);
+      await handler.setReleaseMode(testKey, FinishMode.stop);
+
+      controller.add(PlayerState(false, ProcessingState.completed));
+      await Future<void>.delayed(Duration.zero);
+
+      verify(mockPlayer.stop()).called(1);
     });
   });
 }
