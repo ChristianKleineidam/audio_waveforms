@@ -21,6 +21,9 @@ class AudioWaveformsPlugin : public flutter::Plugin {
 
   void HandleMethodCall(const flutter::MethodCall<flutter::EncodableValue>& call,
                         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+ private:
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel_;
 };
 
 }  // namespace audio_waveforms

@@ -27,4 +27,18 @@ void main() {
       path: anyNamed('path'),
     )).called(1);
   });
+  test('checkPermission returns recorder value', () async {
+    final mockRecorder = MockAudioRecorder();
+    when(mockRecorder.hasPermission()).thenAnswer((_) async => true);
+
+    final handler = DesktopAudioHandler(
+      recorder: mockRecorder,
+      playerFactory: () => MockAudioPlayer(),
+    );
+
+    final result = await handler.checkPermission();
+
+    expect(result, isTrue);
+    verify(mockRecorder.hasPermission()).called(1);
+  });
 }

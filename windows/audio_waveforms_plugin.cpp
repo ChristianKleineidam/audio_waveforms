@@ -15,13 +15,12 @@ using flutter::MethodChannel;
 
 void AudioWaveformsPlugin::RegisterWithRegistrar(
     flutter::PluginRegistrarWindows *registrar) {
-  auto channel = std::make_unique<MethodChannel<EncodableValue>>(registrar->messenger(),
-      "simform_audio_waveforms_plugin/methods",
+  auto plugin = std::make_unique<AudioWaveformsPlugin>();
+  plugin->channel_ = std::make_unique<MethodChannel<EncodableValue>>(
+      registrar->messenger(), "simform_audio_waveforms_plugin/methods",
       &flutter::StandardMethodCodec::GetInstance());
 
-  auto plugin = std::make_unique<AudioWaveformsPlugin>();
-
-  channel->SetMethodCallHandler(
+  plugin->channel_->SetMethodCallHandler(
       [plugin_pointer = plugin.get()](const auto &call, auto result) {
         plugin_pointer->HandleMethodCall(call, std::move(result));
       });
@@ -29,31 +28,15 @@ void AudioWaveformsPlugin::RegisterWithRegistrar(
   registrar->AddPlugin(std::move(plugin));
 }
 
-AudioWaveformsPlugin::AudioWaveformsPlugin() {}
+AudioWaveformsPlugin::AudioWaveformsPlugin() : channel_(nullptr) {}
 
-AudioWaveformsPlugin::~AudioWaveformsPlugin() {}
+AudioWaveformsPlugin::~AudioWaveformsPlugin() { channel_.reset(); }
 
 void AudioWaveformsPlugin::HandleMethodCall(
     const MethodCall<EncodableValue> &method_call,
     std::unique_ptr<MethodResult<EncodableValue>> result) {
   if (method_call.method_name() == "checkPermission") {
-    bool granted = false;
-    try {
-      using namespace winrt::Windows::Devices::Enumeration;
-      auto info = DeviceAccessInformation::CreateFromDeviceClass(DeviceClass::AudioCapture);
-      auto status = info.CurrentStatus();
-      if (status == DeviceAccessStatus::Allowed) {
-        granted = true;
-      } else if (status == DeviceAccessStatus::UserPromptRequired) {
-        status = info.RequestAccessAsync().get();
-        granted = status == DeviceAccessStatus::Allowed;
-      } else {
-        granted = false;
-      }
-    } catch (...) {
-      granted = false;
-    }
-    result->Success(EncodableValue(granted));
+    channel_->InvokeMethod(method_call.method_name(), std::make_unique<EncodableValue>(), std::move(result));
   } else {
     result->Error("UNIMPLEMENTED", "AudioWaveforms desktop support is not yet implemented", method_call.method_name());
   }
