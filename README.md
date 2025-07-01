@@ -64,8 +64,10 @@ operating system.
 
 **Linux**
 
-- Ensure PulseAudio (or another supported backend) is available. Linux does not
-  require special microphone permissions, but PulseAudio is needed for capture.
+- Ensure PulseAudio (or another supported backend) is available. For
+  Ubuntu/Debian based distributions run `sudo apt-get install pulseaudio`
+  and verify with `pulseaudio --version`.
+- Linux does not require special microphone permissions, but PulseAudio is needed for capture.
 
 </details>
 <details>
