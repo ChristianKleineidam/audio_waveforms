@@ -9,16 +9,31 @@ import 'package:just_waveform/just_waveform.dart';
 import '../models/recorder_settings.dart';
 import 'constants.dart';
 import 'utils.dart';
+import 'player_identifier.dart';
+import 'platform_streams.dart';
+
+typedef _WaveformExtractor = Stream<dynamic> Function({
+  required File audioInFile,
+  required File waveOutFile,
+  required WaveformZoom zoom,
+});
 
 class DesktopAudioHandler {
-  DesktopAudioHandler(
-      {AudioRecorder? recorder, ja.AudioPlayer Function()? playerFactory})
-      : _recorder = recorder ?? AudioRecorder(),
-        _playerFactory = playerFactory ?? (() => ja.AudioPlayer());
+  DesktopAudioHandler({
+    AudioRecorder? recorder,
+    ja.AudioPlayer Function()? playerFactory,
+    _WaveformExtractor? waveformExtractor,
+  })  : _recorder = recorder ?? AudioRecorder(),
+        _playerFactory = playerFactory ?? (() => ja.AudioPlayer()),
+        _waveformExtractor =
+            waveformExtractor ?? JustWaveform.extract;
 
   final AudioRecorder _recorder;
   final ja.AudioPlayer Function() _playerFactory;
   final Map<String, ja.AudioPlayer> _players = {};
+  final _waveformSubscriptions = <String, StreamSubscription>{};
+  final _waveformCompleters = <String, Completer<List<double>>>{};
+  final _WaveformExtractor _waveformExtractor;
 
   Future<bool> record({
     required RecorderSettings settings,
@@ -186,31 +201,48 @@ class DesktopAudioHandler {
     required String path,
     required int noOfSamples,
   }) async {
+    await stopWaveformExtraction(key);
     final tempFile =
         File('${(await Directory.systemTemp.createTemp()).path}/waveform_$key');
-    final stream = JustWaveform.extract(
+    final stream = _waveformExtractor(
       audioInFile: File(path),
       waveOutFile: tempFile,
       zoom: WaveformZoom.pixelsPerSecond(noOfSamples),
     );
     final completer = Completer<List<double>>();
-    stream.listen(
+    _waveformCompleters[key] = completer;
+    _waveformSubscriptions[key] = stream.listen(
       (event) {
-        if (event.progress == 1.0 && event.waveform != null) {
-          final waveform = event.waveform!;
+        final progress = event.progress as double? ?? 0.0;
+        PlatformStreams.instance.addExtractionProgress(
+          PlayerIdentifier<double>(key, progress),
+        );
+        if (progress == 1.0 && event.waveform != null) {
+          final waveform = event.waveform as Waveform;
           final points = <double>[];
           for (var i = 0; i < waveform.length; i++) {
             points.add(waveform.getPixelMax(i).toDouble());
           }
+          PlatformStreams.instance.addExtractedWaveformDataEvent(
+            PlayerIdentifier<List<double>>(key, points),
+          );
           completer.complete(points);
         }
       },
       onError: completer.completeError,
+      onDone: () {
+        _waveformSubscriptions.remove(key);
+        _waveformCompleters.remove(key);
+      },
     );
     return completer.future;
   }
 
-  Future<void> stopWaveformExtraction(String key) async {}
+  Future<void> stopWaveformExtraction(String key) async {
+    await _waveformSubscriptions[key]?.cancel();
+    _waveformSubscriptions.remove(key);
+    _waveformCompleters.remove(key);
+  }
 
   Future<bool> stopAllPlayers() async {
     for (final player in _players.values) {
