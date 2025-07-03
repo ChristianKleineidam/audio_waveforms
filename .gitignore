@@ -61,4 +61,5 @@ example/ios/Flutter/flutter_export_environment.sh
 audio_waveforms.iml
 **/*.iml
 pubspec.lock
+example/audio_waveforms_example.iml
 flutter-sdk/
