@@ -40,16 +40,10 @@ void AudioWaveformsPlugin::HandleMethodCall(
     bool granted = false;
     try {
       using namespace winrt::Windows::Devices::Enumeration;
-      auto info = DeviceAccessInformation::CreateFromDeviceClass(DeviceClass::AudioCapture);
-      auto status = info.CurrentStatus();
-      if (status == DeviceAccessStatus::Allowed) {
-        granted = true;
-      } else if (status == DeviceAccessStatus::UserPromptRequired) {
-        status = info.RequestAccessAsync().get();
-        granted = status == DeviceAccessStatus::Allowed;
-      } else {
-        granted = false;
-      }
+      auto info =
+          DeviceAccessInformation::CreateFromDeviceClass(DeviceClass::AudioCapture);
+      auto status = info.RequestAccessAsync().get();
+      granted = status == DeviceAccessStatus::Allowed;
     } catch (...) {
       granted = false;
     }
