@@ -5,6 +5,12 @@
 
 G_BEGIN_DECLS
 
+#ifdef FLUTTER_PLUGIN_IMPL
+#define FLUTTER_PLUGIN_EXPORT __attribute__((visibility("default")))
+#else
+#define FLUTTER_PLUGIN_EXPORT
+#endif
+
 G_DECLARE_FINAL_TYPE(AudioWaveformsPlugin, audio_waveforms_plugin, AUDIO_WAVEFORMS, PLUGIN, GObject)
 
 FLUTTER_PLUGIN_EXPORT void audio_waveforms_plugin_register_with_registrar(FlPluginRegistrar* registrar);
