@@ -5,7 +5,14 @@
 #include <flutter/standard_method_codec.h>
 
 #include <memory>
-#include <winrt/Windows.Security.Authorization.AppCapabilityAccess.h>
+#include <string>
+#if __has_include(<winrt/Windows.Security.Authorization.AppCapabilityAccess.h>)
+#  include <winrt/Windows.Security.Authorization.AppCapabilityAccess.h>
+#  define USE_APP_CAPABILITY 1
+#elif __has_include(<winrt/Windows.Devices.Enumeration.h>)
+#  include <winrt/Windows.Devices.Enumeration.h>
+#  define USE_DEVICE_ACCESS 1
+#endif
 
 namespace audio_waveforms {
 using flutter::EncodableValue;
@@ -39,10 +46,25 @@ void AudioWaveformsPlugin::HandleMethodCall(
   if (method_call.method_name() == "checkPermission") {
     bool granted = false;
     try {
+#if defined(USE_APP_CAPABILITY)
       using namespace winrt::Windows::Security::Authorization::AppCapabilityAccess;
       auto status =
           AppCapabilityAccessManager::RequestAccessForCapabilityAsync(L"microphone").get();
       granted = status == AppCapabilityAccessStatus::Allowed;
+#elif defined(USE_DEVICE_ACCESS)
+      using namespace winrt::Windows::Devices::Enumeration;
+      auto info =
+          DeviceAccessInformation::CreateFromDeviceClass(DeviceClass::AudioCapture);
+      auto status = info.RequestAccessAsync().get();
+      granted = status == DeviceAccessStatus::Allowed;
+#else
+      granted = true;  // Assume permission when APIs are unavailable.
+#endif
+    } catch (const winrt::hresult_error& error) {
+      granted = false;
+      std::wstring message = error.message();
+      result->Error("MIC_PERMISSION_ERROR", winrt::to_string(message));
+      return;
     } catch (...) {
       granted = false;
     }

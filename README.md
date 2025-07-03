@@ -55,12 +55,17 @@ operating system.
 **Windows**
 
 - Declare the `microphone` capability in the application manifest.
-  
+
   ```xml
   <Capabilities>
       <DeviceCapability Name="microphone" />
   </Capabilities>
   ```
+
+- The plugin requests microphone access using modern Windows APIs if available.
+  When built with an older Windows SDK it falls back to legacy APIs. Ensure the
+  project targets at least Windows 10 version 1809 for permission prompts to
+  work.
 
 **Linux**
 
