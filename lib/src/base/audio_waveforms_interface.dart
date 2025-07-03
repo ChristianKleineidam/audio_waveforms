@@ -3,7 +3,16 @@ part of '../controllers/player_controller.dart';
 class AudioWaveformsInterface {
   AudioWaveformsInterface._();
 
+  /// Public constructor used for testing subclasses.
+  AudioWaveformsInterface.test() : this._();
+
   static AudioWaveformsInterface instance = AudioWaveformsInterface._();
+
+  /// Replaces the global [instance] for testing purposes.
+  @visibleForTesting
+  static void setInstance(AudioWaveformsInterface testInstance) {
+    instance = testInstance;
+  }
 
   final DesktopAudioHandler _desktopHandler = DesktopAudioHandler();
 
