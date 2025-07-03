@@ -60,4 +60,5 @@ ios/Runner.xcworkspace/xcshareddata/
 example/ios/Flutter/flutter_export_environment.sh
 audio_waveforms.iml
 pubspec.lock
+example/audio_waveforms_example.iml
 flutter-sdk/
