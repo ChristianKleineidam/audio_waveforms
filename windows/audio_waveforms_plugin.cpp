@@ -5,7 +5,7 @@
 #include <flutter/standard_method_codec.h>
 
 #include <memory>
-#include <winrt/Windows.Devices.Enumeration.h>
+#include <winrt/Windows.Security.Authorization.AppCapabilityAccess.h>
 
 namespace audio_waveforms {
 using flutter::EncodableValue;
@@ -39,11 +39,10 @@ void AudioWaveformsPlugin::HandleMethodCall(
   if (method_call.method_name() == "checkPermission") {
     bool granted = false;
     try {
-      using namespace winrt::Windows::Devices::Enumeration;
-      auto info =
-          DeviceAccessInformation::CreateFromDeviceClass(DeviceClass::AudioCapture);
-      auto status = info.RequestAccessAsync().get();
-      granted = status == DeviceAccessStatus::Allowed;
+      using namespace winrt::Windows::Security::Authorization::AppCapabilityAccess;
+      auto status =
+          AppCapabilityAccessManager::RequestAccessForCapabilityAsync(L"microphone").get();
+      granted = status == AppCapabilityAccessStatus::Allowed;
     } catch (...) {
       granted = false;
     }
