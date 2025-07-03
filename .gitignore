@@ -59,5 +59,6 @@ ios/Frameworks/
 ios/Runner.xcworkspace/xcshareddata/
 example/ios/Flutter/flutter_export_environment.sh
 audio_waveforms.iml
+**/*.iml
 pubspec.lock
 flutter-sdk/
