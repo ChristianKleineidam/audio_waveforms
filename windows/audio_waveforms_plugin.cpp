@@ -57,7 +57,12 @@ void AudioWaveformsPlugin::HandleMethodCall(
     const bool granted = RequestMicrophonePermission();
     result->Success(EncodableValue(granted));
   } else {
-    result->Error("UNIMPLEMENTED", "AudioWaveforms desktop support is not yet implemented", method_call.method_name());
+    std::string message =
+        "Method '" + std::string(method_call.method_name()) +
+        "' is not implemented for desktop. "
+        "Try using RecorderController or PlayerController from the "
+        "audio_waveforms package instead.";
+    result->Error("UNIMPLEMENTED", message, method_call.method_name());
   }
 }
 

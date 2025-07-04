@@ -14,7 +14,8 @@ public class AudioWaveformsPlugin: NSObject, FlutterPlugin {
     case Constants.checkPermission:
       checkPermission(result: result)
     default:
-      result(FlutterError(code: Constants.audioWaveforms, message: "AudioWaveforms desktop support is not yet implemented", details: call.method))
+      let details = "Method \(call.method) is not implemented for desktop. Try using RecorderController or PlayerController from the audio_waveforms package instead."
+      result(FlutterError(code: Constants.audioWaveforms, message: details, details: call.method))
     }
   }
 
