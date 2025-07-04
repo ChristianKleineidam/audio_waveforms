@@ -21,10 +21,14 @@ static void audio_waveforms_plugin_handle_method_call(
     // Linux does not require microphone permission by default.
     response = FL_METHOD_RESPONSE(fl_method_success_response_new(fl_value_new_bool(true)));
   } else {
+    gchar* details = g_strdup_printf(
+        "Method '%s' is not implemented for desktop. Try using RecorderController or PlayerController from the audio_waveforms package instead.",
+        method);
     response = FL_METHOD_RESPONSE(fl_method_error_response_new(
         "UNIMPLEMENTED",
-        "AudioWaveforms desktop support is not yet implemented",
+        details,
         fl_value_new_string(method)));
+    g_free(details);
   }
   fl_method_call_respond(method_call, response, nullptr);
 }
