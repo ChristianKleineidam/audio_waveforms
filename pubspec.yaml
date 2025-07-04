@@ -38,3 +38,10 @@ flutter:
       linux:
         pluginClass: AudioWaveformsPlugin
 
+platforms:
+  android:
+  ios:
+  macos:
+  windows:
+  linux:
+
