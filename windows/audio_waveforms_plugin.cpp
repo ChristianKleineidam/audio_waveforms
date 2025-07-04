@@ -28,7 +28,11 @@ bool RequestMicrophonePermission() {
       using namespace winrt::Windows::Devices::Enumeration;
       const auto info =
           DeviceAccessInformation::CreateFromDeviceClass(DeviceClass::AudioCapture);
+#if WINVER >= 0x0A00
       const auto status = info.RequestAccessAsync().get();
+#else
+      const auto status = info.RequestAccess();
+#endif
       return status == DeviceAccessStatus::Allowed;
     } catch (const winrt::hresult_error& e) {
       std::cerr << "Microphone permission request failed: "
