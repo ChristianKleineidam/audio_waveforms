@@ -6,7 +6,7 @@
 
 #include <memory>
 #include <iostream>
-#include <winrt/Windows.Security.Authorization.AppCapabilityAccess.h>
+#include <winrt/Windows.Devices.Enumeration.h>
 
 namespace audio_waveforms {
 using flutter::EncodableValue;
@@ -16,17 +16,17 @@ using flutter::MethodChannel;
 
 namespace {
 bool RequestMicrophonePermission() {
-  using namespace winrt::Windows::Security::Authorization::AppCapabilityAccess;
+  using namespace winrt::Windows::Devices::Enumeration;
   try {
-    const auto status =
-        AppCapabilityAccessManager::RequestAccessForCapabilityAsync(L"microphone")
-            .get();
-    return status == AppCapabilityAccessStatus::Allowed;
-  } catch (const winrt::hresult_error& error) {
+    const auto info =
+        DeviceAccessInformation::CreateFromDeviceClass(DeviceClass::AudioCapture);
+    const auto status = info.RequestAccessAsync().get();
+    return status == DeviceAccessStatus::Allowed;
+  } catch (const winrt::hresult_error& e) {
     std::cerr << "Microphone permission request failed: "
-              << winrt::to_string(error.message()) << std::endl;
+              << winrt::to_string(e.message()) << std::endl;
+    return false;
   }
-  return false;
 }
 }  // namespace
 
