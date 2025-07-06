@@ -18,12 +18,13 @@ namespace {
 bool RequestMicrophonePermission() {
   using namespace winrt::Windows::Devices::Enumeration;
   try {
-    const auto info =
+    // Is any Audio-Capture device currently allowed?
+    auto info =
         DeviceAccessInformation::CreateFromDeviceClass(DeviceClass::AudioCapture);
-    const auto status = info.RequestAccessAsync().get();
+    auto status = info.CurrentStatus();  // <- synchronous property
     return status == DeviceAccessStatus::Allowed;
   } catch (const winrt::hresult_error& e) {
-    std::cerr << "Microphone permission request failed: "
+    std::cerr << "Microphone permission check failed: "
               << winrt::to_string(e.message()) << std::endl;
     return false;
   }
